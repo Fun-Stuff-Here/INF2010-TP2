@@ -50,16 +50,12 @@ public class HashMap<KeyType, DataType> {
     /**
      * @return if map should be rehashed
      */
-    private boolean needRehash() {
-        return size * loadFactor > capacity;
-    }
+    private boolean needRehash() { return size * loadFactor > capacity; }
 
     /**
      * @return Number of elements currently in the map
      */
-    public int size() {
-        return size;
-    }
+    public int size() { return size; }
 
     /**
      * @return Current reserved space for the map
@@ -69,16 +65,29 @@ public class HashMap<KeyType, DataType> {
     /**
      * @return if map does not contain any element
      */
-    public boolean isEmpty() {
-        return size == 0;
-    }
+    public boolean isEmpty() { return size == 0; }
 
     /** TODO
      * Increases capacity by CAPACITY_INCREASE_FACTOR (multiplication) and
      * reassigns all contained values within the new map
      */
     private void rehash() {
-        return;
+        capacity = capacity * CAPACITY_INCREASE_FACTOR;
+        Node<KeyType, DataType>[] oldMap = map;
+        clear();
+        for(int i = 0; i < oldMap.length; ++i){
+            if(oldMap[i] != null){
+                put(oldMap[i].key, oldMap[i].data);
+                if(oldMap[i].next != null){
+                    Node<KeyType, DataType> nextNode = oldMap[i].next;
+                    while(nextNode != null){
+                        put(nextNode.key, nextNode.data);
+                        nextNode = nextNode.next;
+                    }
+                }
+            }
+        }
+
     }
 
     /** TODO
@@ -87,6 +96,17 @@ public class HashMap<KeyType, DataType> {
      * @return if key is already used in map
      */
     public boolean containsKey(KeyType key) {
+        int hashVal = hash(key);
+        if(map[hashVal] != null){
+            Node<KeyType, DataType> node = map[hashVal];
+            while(!node.key.equals(key) && node.next != null)
+                node = node.next;
+            if(node.key.equals(key))
+                return true;
+            if(node.next == null)
+                return false;
+        }
+
         return false;
     }
 
@@ -96,6 +116,20 @@ public class HashMap<KeyType, DataType> {
      * @return DataType instance attached to key (null if not found)
      */
     public DataType get(KeyType key) {
+        int hashVal = hash(key);
+        if(map[hashVal] == null)
+            return null;
+        if(map[hashVal].key.equals(key))
+            return map[hashVal].data;
+        if(!(map[hashVal].key.equals(key)) && map[hashVal].next != null){
+            Node<KeyType, DataType> node = map[hashVal].next;
+            while (!(node.key.equals(key)) && node.next != null)
+                node = node.next;
+            if(node.key.equals(key))
+                return node.data;
+            if(node.next == null)
+                return null;
+        }
         return null;
     }
 
@@ -105,7 +139,23 @@ public class HashMap<KeyType, DataType> {
      * @return Old DataType instance at key (null if none existed)
      */
     public DataType put(KeyType key, DataType value) {
-        return null;
+        DataType removedData = null;
+        if(containsKey(key))
+            removedData = remove(key);
+        int hashVal = hash(key);
+        Node<KeyType, DataType> newNode = new Node(key, value);
+        if(map[hashVal] == null)
+            map[hashVal] = newNode;
+        else{
+            Node<KeyType, DataType> node = map[hashVal];
+            while(node.next != null)
+                node = node.next;
+            node.next = newNode;
+        }
+        ++size;
+        if(needRehash())
+            rehash();
+        return removedData;
     }
 
     /**TODO
@@ -114,13 +164,47 @@ public class HashMap<KeyType, DataType> {
      * @return Old DataType instance at key (null if none existed)
      */
     public DataType remove(KeyType key) {
-        return null;
+        DataType removedData = null;
+        int hashVal = hash(key);
+        if(map[hashVal] != null && map[hashVal].key.equals(key)){
+            removedData = map[hashVal].data;
+            if(map[hashVal].next != null)
+                map[hashVal] = map[hashVal].next;
+            else
+                map[hashVal] = null;
+            --size;
+            return removedData;
+
+        }
+        else if(map[hashVal] != null && !(map[hashVal].key.equals(key)) && map[hashVal].next != null){
+            Node<KeyType, DataType> node = map[hashVal].next;
+            // Find the node to remove
+            while (node.next != null && !(node.key.equals(key)))
+                node = node.next;
+
+            if(!(node.key.equals(key)))
+                return null;
+            removedData = node.data;
+
+            // Remove the node while taking in consideration that the node may have a previous and a next node
+            Node<KeyType, DataType> previousNode = map[hashVal];
+            while(previousNode.next != node)
+                previousNode = previousNode.next;
+            previousNode.next = node.next;
+
+            --size;
+            return removedData;
+        }
+
+        return removedData;
     }
 
     /**TODO
      * Removes all nodes contained within the map
      */
     public void clear() {
+        map = new Node[capacity];
+        size = 0;
     }
 
     /**
